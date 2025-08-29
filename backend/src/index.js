@@ -10,9 +10,10 @@ const logger = require('./utils/logger');
 const database = require('./database/connection');
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandlers');
+const serveStatic = require('./middleware/staticFiles');
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || 8081;
+const PORT = process.env.NODE_ENV === 'production' ? (process.env.PRODUCTION_PORT || 8082) : (process.env.BACKEND_PORT || 8081);
 
 // Trust proxy for rate limiting
 app.set('trust proxy', 1);
@@ -78,6 +79,9 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api', routes);
+
+// Serve static files in production
+serveStatic(app);
 
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
