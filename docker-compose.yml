@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  audiobookshelf-companion:
+    build: .
+    ports:
+      - "8082:8082"
+    volumes:
+      # Mount your AudioBookShelf library (read-only)
+      - "${AUDIOBOOKSHELF_LIBRARY_PATH}:/audiobooks:ro"
+      # Persistent data for this app
+      - "./data:/data"
+      # Config file
+      - "./.env:/app/.env:ro"
+    environment:
+      - NODE_ENV=production
+      - AUDIOBOOKSHELF_LIBRARY_PATH=/audiobooks
+      - DATABASE_PATH=/data/companion.db
+      - LOG_FILE_PATH=/data/logs/app.log
+    restart: unless-stopped
+    depends_on:
+      - companion-db
+    networks:
+      - companion-network
+
+  companion-db:
+    image: sqlite:latest
+    volumes:
+      - "./data/db:/data"
+    networks:
+      - companion-network
+
+  # Development services (use with docker-compose -f docker-compose.dev.yml)
+  companion-backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8081:8081"
+    volumes:
+      - "${AUDIOBOOKSHELF_LIBRARY_PATH}:/audiobooks:ro"
+      - "./backend:/app"
+      - "./data:/data"
+      - "./.env:/app/.env:ro"
+    environment:
+      - NODE_ENV=development
+      - AUDIOBOOKSHELF_LIBRARY_PATH=/audiobooks
+    profiles:
+      - dev
+    networks:
+      - companion-network
+
+  companion-frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - "./frontend:/app"
+      - "/app/node_modules"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8081
+    profiles:
+      - dev
+    networks:
+      - companion-network
+
+networks:
+  companion-network:
+    driver: bridge
+
+volumes:
+  companion-data:
+    driver: local

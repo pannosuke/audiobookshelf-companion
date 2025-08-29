@@ -1,0 +1,49 @@
+version: '3.8'
+
+# Development override file
+# Use: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  audiobookshelf-companion:
+    profiles:
+      - production
+
+  companion-backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8081:8081"
+    volumes:
+      - "${AUDIOBOOKSHELF_LIBRARY_PATH}:/audiobooks:ro"
+      - "./backend:/app"
+      - "./data:/data"
+      - "./.env.local:/app/.env:ro"
+    environment:
+      - NODE_ENV=development
+      - AUDIOBOOKSHELF_LIBRARY_PATH=/audiobooks
+      - DATABASE_PATH=/data/dev.db
+      - DEBUG_MODE=true
+      - VERBOSE_LOGGING=true
+    command: npm run dev
+    networks:
+      - companion-network
+
+  companion-frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:3000"
+    volumes:
+      - "./frontend:/app"
+      - "/app/node_modules"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8081
+      - REACT_APP_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    command: npm start
+    networks:
+      - companion-network
+    depends_on:
+      - companion-backend-dev
